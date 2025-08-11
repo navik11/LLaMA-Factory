@@ -168,7 +168,7 @@ def main():
         if not os.path.exists(os.path.dirname(dataset_info_path)):
              print(f"Warning: 'data' directory not found. Cannot update dataset_info.json.")
         else:
-             create_and_update_dataset_info(dataset_name, output_filepath, dataset_info_path)
+             create_and_update_dataset_info(dataset_name, output_filename, dataset_info_path)
     
     print("\n--- Conversion Complete! ---")
     print(f"✓ Output file: {output_filepath}")
