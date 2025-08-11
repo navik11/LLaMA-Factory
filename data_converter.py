@@ -68,7 +68,7 @@ def convert_conversation(messages: List[Dict], conversation_id: int) -> Dict[str
                 conversation["conversations"].append({
                     "from": "human",
                     "value": text_content,
-                    "image": image_path  # LLaMA-Factory format for images
+                    "image": f"/kaggle/input/cddm-dataset/dataset{image_path}"  # LLaMA-Factory format for images
                 })
             else:
                 conversation["conversations"].append({
