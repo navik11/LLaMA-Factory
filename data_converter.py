@@ -1,164 +1,179 @@
 #!/usr/bin/env python3
 """
-Convert CDDM_converted.jsonl to LLaMA-Factory format for Qwen-VL training
+Convert CDDM_converted.jsonl to the LLaMA-Factory ShareGPT format for Qwen-VL.
 """
 
 import json
 import os
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
-def convert_jsonl_to_llamafactory(input_file: str, output_file: str, dataset_name: str = "plant_disease"):
+def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
     """
-    Convert JSONL format to LLaMA-Factory format for vision-language training
-    """
-    converted_data = []
-    
-    with open(input_file, 'r', encoding='utf-8') as f:
-        for line_num, line in enumerate(f):
-            if line.strip():
-                try:
-                    data = json.loads(line.strip())
-                    messages = data['messages']
-                    
-                    # Convert conversation to LLaMA-Factory format
-                    converted_conversation = convert_conversation(messages, line_num)
-                    if converted_conversation:
-                        converted_data.append(converted_conversation)
-                        
-                except json.JSONDecodeError as e:
-                    print(f"Error parsing line {line_num + 1}: {e}")
-                    continue
-    
-    # Save converted data
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(converted_data, f, ensure_ascii=False, indent=2)
-    
-    print(f"Converted {len(converted_data)} conversations")
-    print(f"Saved to: {output_file}")
-    
-    return len(converted_data)
+    Converts a single conversation from the input format to the target LLaMA-Factory format.
 
-def convert_conversation(messages: List[Dict], conversation_id: int) -> Dict[str, Any]:
+    The target format requires:
+    1. A top-level "images" key containing a list of image paths.
+    2. A "<image>" placeholder token in the first user message's content.
     """
-    Convert a single conversation to LLaMA-Factory format
-    """
-    conversation = {
-        "conversation_id": conversation_id,
-        "conversations": []
-    }
-    
-    image_path = None
-    
+    llama_factory_turns = []
+    image_paths = []
+    is_first_user_message = True
+
     for message in messages:
         role = message['role']
-        content = message['content']
-        
+        content = message['content'].strip()
+
+        # Determine the speaker role for ShareGPT format
         if role == 'user':
-            # Extract image path if present
+            speaker = 'human'
+        elif role == 'assistant':
+            speaker = 'gpt'
+        else:
+            # Skip unknown roles
+            continue
+
+        # Process the first user message to extract the image and add the placeholder
+        if speaker == 'human' and is_first_user_message:
             img_pattern = r'<img>(.*?)</img>'
             img_match = re.search(img_pattern, content)
-            
-            if img_match:
-                image_path = img_match.group(1)
-                # Remove image tag from content
-                text_content = re.sub(img_pattern, '', content).strip()
-                
-                # For LLaMA-Factory, we include image in the user message
-                conversation["conversations"].append({
-                    "from": "human",
-                    "value": text_content,
-                    "image": f"/kaggle/input/cddm-dataset/dataset{image_path}"  # LLaMA-Factory format for images
-                })
-            else:
-                conversation["conversations"].append({
-                    "from": "human", 
-                    "value": content
-                })
-                
-        elif role == 'assistant':
-            conversation["conversations"].append({
-                "from": "gpt",
-                "value": content
-            })
-    
-    # Add image path to conversation metadata if found
-    if image_path:
-        conversation["image"] = image_path
-    
-    return conversation
 
-def create_dataset_info(dataset_name: str, data_file: str) -> Dict[str, Any]:
+            if img_match:
+                # 1. Extract the relative image path and add it to our list.
+                relative_path = img_match.group(1)
+                image_paths.append(relative_path)
+
+                # 2. Remove the old <img> tag and add the required <image> placeholder.
+                text_content = re.sub(img_pattern, '', content).strip()
+                # Prepend the placeholder. A newline makes it clean.
+                value = f"<image>\n/kaggle/input/cddm-dataset/dataset{text_content}"
+            else:
+                # If the first user message has no image, we can't use it for V-L training.
+                # We will skip this entire conversation entry.
+                return None
+            
+            # Ensure we only process the image for the very first user turn
+            is_first_user_message = False
+        else:
+            # For assistant messages or subsequent user messages, just use the content as is.
+            value = content
+
+        llama_factory_turns.append({"from": speaker, "value": value})
+    
+    # If for some reason we have turns but no image was extracted, skip.
+    if not image_paths:
+        return None
+
+    # Construct the final object in the correct format
+    final_conversation = {
+        "conversations": llama_factory_turns,
+        "images": image_paths  # Plural key with a list of paths
+    }
+
+    return final_conversation
+
+
+def convert_jsonl_to_llamafactory(input_file: str, output_file: str):
     """
-    Create dataset_info.json entry for LLaMA-Factory
+    Reads the input JSONL file and writes the converted data to a new JSON file.
     """
-    dataset_info = {
+    converted_data = []
+    with open(input_file, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f):
+            if not line.strip():
+                continue
+            
+            try:
+                data = json.loads(line.strip())
+                messages = data.get('messages')
+                if not messages:
+                    continue
+
+                # Convert the conversation using our new logic
+                converted_entry = convert_conversation(messages)
+                
+                # Only add if the conversion was successful (i.e., returned an object)
+                if converted_entry:
+                    converted_data.append(converted_entry)
+
+            except json.JSONDecodeError:
+                print(f"Warning: Skipping malformed JSON on line {line_num + 1}.")
+                continue
+    
+    # Save the final list of converted data to the output file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        # The output is a single JSON array, not JSONL
+        json.dump(converted_data, f, ensure_ascii=False, indent=2)
+
+    print(f"Successfully converted {len(converted_data)} conversations.")
+    print(f"Saved to: {output_file}")
+    return len(converted_data)
+
+def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_info_path: str):
+    """
+    Creates the correct dataset_info.json entry and updates the file.
+    """
+    # This structure now perfectly matches the LLaMA-Factory documentation
+    new_info = {
         dataset_name: {
             "file_name": data_file,
-            "formatting": "sharegpt",  # LLaMA-Factory format for conversations
+            "formatting": "sharegpt",
             "columns": {
                 "messages": "conversations",
-                "images": "image"
-            },
-            "tags": {
-                "role_tag": "from",
-                "content_tag": "value", 
-                "user_tag": "human",
-                "assistant_tag": "gpt"
+                "images": "images"  # Corrected to plural "images"
             }
         }
     }
-    return dataset_info
-
-def update_dataset_info_file(dataset_name: str, data_file: str, dataset_info_path: str):
-    """
-    Update or create dataset_info.json file
-    """
-    new_info = create_dataset_info(dataset_name, data_file)
     
-    # Load existing dataset_info.json if it exists
     if os.path.exists(dataset_info_path):
         with open(dataset_info_path, 'r', encoding='utf-8') as f:
-            existing_info = json.load(f)
-        existing_info.update(new_info)
+            try:
+                existing_info = json.load(f)
+            except json.JSONDecodeError:
+                existing_info = {} # Start fresh if file is corrupt
     else:
-        existing_info = new_info
+        existing_info = {}
     
-    # Save updated dataset_info.json
+    existing_info.update(new_info)
+    
     with open(dataset_info_path, 'w', encoding='utf-8') as f:
         json.dump(existing_info, f, ensure_ascii=False, indent=2)
     
-    print(f"Updated dataset_info.json with {dataset_name}")
+    print(f"Updated dataset info at: {dataset_info_path}")
 
 def main():
-    # Configuration
-    input_file = "CDDM_converted.jsonl"
-    output_file = "data/plant_disease_data.json"
-    dataset_name = "plant_disease"
-    dataset_info_path = "data/dataset_info.json"
+    # --- Configuration ---
+    # NOTE: It's assumed you run this from the root of your project,
+    # and LLaMA-Factory is a subdirectory.
+    input_file = "CDDM_converted.jsonl" # Expects this file in the same directory
+    output_folder = "data" # We will save the output here
+    output_filename = "plant_disease_sharegpt.json"
+    dataset_name = "plant_disease_vlm"
     
-    # Check if input file exists
+    # --- Execution ---
     if not os.path.exists(input_file):
-        print(f"Error: Input file {input_file} not found!")
-        print("Make sure CDDM_converted.jsonl is in the current directory.")
+        print(f"Error: Input file '{input_file}' not found!")
+        print("Please place the script in your project's root directory and ensure the data file is present.")
         return
     
-    # Create data directory if it doesn't exist
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True)
+    output_filepath = os.path.join(output_folder, output_filename)
     
-    # Convert data
-    print("Converting data to LLaMA-Factory format...")
-    num_conversations = convert_jsonl_to_llamafactory(input_file, output_file, dataset_name)
+    print("Starting conversion to LLaMA-Factory ShareGPT format...")
+    num_conversations = convert_jsonl_to_llamafactory(input_file, output_filepath)
     
-    # Update dataset_info.json
-    print("Updating dataset_info.json...")
-    update_dataset_info_file(dataset_name, "plant_disease_data.json", dataset_info_path)
+    if num_conversations > 0:
+        # Define path to LLaMA-Factory's dataset info file
+        dataset_info_path = os.path.join("data", "dataset_info.json")
+        if not os.path.exists(os.path.dirname(dataset_info_path)):
+             print(f"Warning: 'data' directory not found. Cannot update dataset_info.json.")
+        else:
+             create_and_update_dataset_info(dataset_name, output_filepath, dataset_info_path)
     
-    print(f"\nConversion completed!")
-    print(f"✓ Converted {num_conversations} conversations")
-    print(f"✓ Data saved to: {output_file}")
-    print(f"✓ Dataset info updated: {dataset_info_path}")
-    print("\nYou can now proceed with training using LLaMA-Factory!")
+    print("\n--- Conversion Complete! ---")
+    print(f"✓ Output file: {output_filepath}")
+    print(f"✓ Dataset name for your YAML config: {dataset_name}")
+    print("You can now run LLaMA-Factory using the updated configuration.")
 
 if __name__ == "__main__":
     main()
