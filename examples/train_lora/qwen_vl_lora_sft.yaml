@@ -1,0 +1,124 @@
+# qwen_vl_lora_sft.yaml - Training configuration for LLaMA-Factory
+# Save this file in LLaMA-Factory/examples/train_lora/
+
+# Model settings
+model_name_or_path: Qwen/Qwen-VL-Chat
+trust_remote_code: true
+
+# LoRA settings
+finetuning_type: lora
+lora_target: all
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.1
+loraplus_lr_ratio: 16.0
+
+# Dataset settings
+dataset: plant_disease
+template: qwen
+cutoff_len: 2048
+max_samples: 10000
+overwrite_cache: true
+preprocessing_num_workers: 16
+
+# Training settings
+stage: sft
+do_train: true
+output_dir: saves/qwen-vl-plant-disease
+overwrite_output_dir: true
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 2.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+
+# Logging and saving
+logging_steps: 10
+save_steps: 500
+eval_steps: 500
+evaluation_strategy: steps
+save_total_limit: 3
+load_best_model_at_end: true
+
+# Memory optimization
+gradient_checkpointing: true
+dataloader_pin_memory: false
+remove_unused_columns: false
+
+# Quantization (for memory efficiency)
+quantization_bit: 4
+quantization_type: nf4
+double_quantization: true
+
+# Vision-language specific settings
+visual_inputs: true
+image_resolution: 448
+freeze_vision_tower: false
+
+# Advanced settings
+weight_decay: 0.01
+max_grad_norm: 1.0
+seed: 42
+report_to: none
+
+---
+
+# Alternative configuration for full fine-tuning (if you have enough memory)
+# qwen_vl_full_sft.yaml
+
+# Model settings  
+model_name_or_path: Qwen/Qwen-VL-Chat
+trust_remote_code: true
+
+# Full fine-tuning settings
+finetuning_type: full
+
+# Dataset settings
+dataset: plant_disease
+template: qwen
+cutoff_len: 2048
+max_samples: 10000
+overwrite_cache: true
+preprocessing_num_workers: 16
+
+# Training settings
+stage: sft
+do_train: true
+output_dir: saves/qwen-vl-plant-disease-full
+overwrite_output_dir: true
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 1.0e-5
+num_train_epochs: 2.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+
+# Logging and saving
+logging_steps: 10
+save_steps: 500
+eval_steps: 500
+evaluation_strategy: steps
+save_total_limit: 2
+load_best_model_at_end: true
+
+# Memory optimization
+gradient_checkpointing: true
+dataloader_pin_memory: false
+remove_unused_columns: false
+deepspeed: examples/deepspeed/ds_z3_config.json
+
+# Vision-language specific settings
+visual_inputs: true
+image_resolution: 448
+freeze_vision_tower: false
+
+# Advanced settings
+weight_decay: 0.01
+max_grad_norm: 1.0
+seed: 42
+report_to: none
