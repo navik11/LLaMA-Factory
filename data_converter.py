@@ -132,7 +132,7 @@ def update_dataset_info_file(dataset_name: str, data_file: str, dataset_info_pat
 
 def main():
     # Configuration
-    input_file = "../kaggle/input/cddm-dataset/CDDM_converted.jsonl"
+    input_file = "CDDM_converted.jsonl"
     output_file = "data/plant_disease_data.json"
     dataset_name = "plant_disease"
     dataset_info_path = "data/dataset_info.json"
