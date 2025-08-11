@@ -40,13 +40,13 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
 
             if img_match:
                 # 1. Extract the relative image path and add it to our list.
-                relative_path = img_match.group(1)
+                relative_path = f"/kaggle/input/cddm-dataset/dataset{img_match.group(1)}"
                 image_paths.append(relative_path)
 
                 # 2. Remove the old <img> tag and add the required <image> placeholder.
                 text_content = re.sub(img_pattern, '', content).strip()
                 # Prepend the placeholder. A newline makes it clean.
-                value = f"<image>\n/kaggle/input/cddm-dataset/dataset{text_content}"
+                value = f"<image>\n{text_content}"
             else:
                 # If the first user message has no image, we can't use it for V-L training.
                 # We will skip this entire conversation entry.
