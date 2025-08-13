@@ -45,8 +45,11 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
 
                 # 2. Remove the old <img> tag and add the required <image> placeholder.
                 text_content = re.sub(img_pattern, '', content).strip()
-                # For LLaVA-NeXT, prepend the placeholder. A newline makes it clean.
-                value = f"<image>\n{text_content}"
+                # For LLaVA, the image token should be at the beginning
+                if text_content:
+                    value = f"<image>\n{text_content}"
+                else:
+                    value = "<image>"
             else:
                 # If the first user message has no image, we can't use it for V-L training.
                 # We will skip this entire conversation entry.
