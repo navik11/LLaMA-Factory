@@ -74,8 +74,8 @@ def main():
     # Input datasets
     dataset_dir = "data"
     dataset_files = [
-        os.path.join(dataset_dir, "crop_recommendation_sharegpt.json"),
-        os.path.join(dataset_dir, "qa_dataset_sharegpt.json"),
+        # os.path.join(dataset_dir, "crop_recommendation_sharegpt.json"),
+        # os.path.join(dataset_dir, "qa_dataset_sharegpt.json"),
         os.path.join(dataset_dir, "plant_disease_sharegpt.json")
     ]
 
