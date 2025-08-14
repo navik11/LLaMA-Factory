@@ -46,7 +46,7 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
                 # 2. Remove the old <img> tag and add the required <image> placeholder.
                 text_content = re.sub(img_pattern, '', content).strip()
                 # Prepend the placeholder. A newline makes it clean.
-                value = f"<image><image>\n{text_content}"
+                value = f"<image>\n{text_content}"
             else:
                 # If the first user message has no image, we can't use it for V-L training.
                 # We will skip this entire conversation entry.
