@@ -11,7 +11,7 @@ lora_rank: 8
 lora_target: all
 
 ### dataset
-dataset: crop_rec_text,qa_text,plant_disease_vlm
+dataset: merged_dataset
 template: llava
 cutoff_len: 1024
 max_samples: 1000
@@ -20,7 +20,7 @@ preprocessing_num_workers: 16
 dataloader_num_workers: 4
 
 ### output
-output_dir: saves/llava-next-7b-qlora-sft-plant-disease
+output_dir: saves/llava-1_5-7b-qlora-sft-plant-dataset
 logging_steps: 10
 save_steps: 500
 plot_loss: true
