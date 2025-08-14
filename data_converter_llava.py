@@ -75,7 +75,6 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
 
     return final_conversation
 
-
 def convert_jsonl_to_llamafactory(input_file: str, output_file: str):
     """
     Reads the input JSONL file and writes the converted data to a new JSON file.
@@ -147,7 +146,6 @@ def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_in
 def main():
     # --- Configuration ---
     # NOTE: It's assumed you run this from the root of your project,
-    # and LLaMA-Factory is a subdirectory.
     input_file = "CDDM_converted.jsonl" # Expects this file in the same directory
     output_folder = "data" # We will save the output here
     output_filename = "plant_disease_sharegpt.json"
