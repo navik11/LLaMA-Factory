@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert CDDM_converted.jsonl to the LLaMA-Factory ShareGPT format for LLaVA-NeXT.
+Convert CDDM_converted.jsonl to the LLaMA-Factory ShareGPT format for Qwen-VL.
 """
 
 import json
@@ -45,11 +45,8 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
 
                 # 2. Remove the old <img> tag and add the required <image> placeholder.
                 text_content = re.sub(img_pattern, '', content).strip()
-                # For LLaVA, the image token should be at the beginning
-                if text_content:
-                    value = f"<image>\n{text_content}"
-                else:
-                    value = "<image>"
+                # Prepend the placeholder. A newline makes it clean.
+                value = f"<image>\n{text_content}"
             else:
                 # If the first user message has no image, we can't use it for V-L training.
                 # We will skip this entire conversation entry.
@@ -74,6 +71,7 @@ def convert_conversation(messages: List[Dict]) -> Optional[Dict[str, Any]]:
     }
 
     return final_conversation
+
 
 def convert_jsonl_to_llamafactory(input_file: str, output_file: str):
     """
@@ -115,7 +113,7 @@ def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_in
     """
     Creates the correct dataset_info.json entry and updates the file.
     """
-    # This structure now matches the LLaMA-Factory documentation for LLaVA-NeXT
+    # This structure now perfectly matches the LLaMA-Factory documentation
     new_info = {
         dataset_name: {
             "file_name": data_file,
@@ -146,6 +144,7 @@ def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_in
 def main():
     # --- Configuration ---
     # NOTE: It's assumed you run this from the root of your project,
+    # and LLaMA-Factory is a subdirectory.
     input_file = "CDDM_converted.jsonl" # Expects this file in the same directory
     output_folder = "data" # We will save the output here
     output_filename = "plant_disease_sharegpt.json"
@@ -160,7 +159,7 @@ def main():
     os.makedirs(output_folder, exist_ok=True)
     output_filepath = os.path.join(output_folder, output_filename)
     
-    print("Starting conversion to LLaMA-Factory ShareGPT format for LLaVA-NeXT...")
+    print("Starting conversion to LLaMA-Factory ShareGPT format...")
     num_conversations = convert_jsonl_to_llamafactory(input_file, output_filepath)
     
     if num_conversations > 0:
@@ -174,7 +173,7 @@ def main():
     print("\n--- Conversion Complete! ---")
     print(f"✓ Output file: {output_filepath}")
     print(f"✓ Dataset name for your YAML config: {dataset_name}")
-    print("You can now run LLaMA-Factory with LLaVA-NeXT using the updated configuration.")
+    print("You can now run LLaMA-Factory using the updated configuration.")
 
 if __name__ == "__main__":
     main()
