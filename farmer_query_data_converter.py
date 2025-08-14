@@ -78,7 +78,7 @@ def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_in
 
 def main():
     output_folder = "data"
-    qa_csv_input = "farmer_call_query_dataset.csv"
+    qa_csv_input = "farmer_call_query_dataset_dropped.csv"
     qa_output_filename = "qa_dataset_sharegpt.json"
     qa_dataset_name = "qa_text"
 
