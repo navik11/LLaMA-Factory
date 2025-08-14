@@ -84,7 +84,7 @@ def create_and_update_dataset_info(dataset_name: str, data_file: str, dataset_in
 
 def main():
     output_folder = "data"
-    crop_csv_input = "Crop_recommendation_dropped.csv"
+    crop_csv_input = "crop_recommendation_dropped.csv"
     crop_output_filename = "crop_recommendation_sharegpt.json"
     crop_dataset_name = "crop_rec_text"
 
